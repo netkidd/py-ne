@@ -1,3 +1,94 @@
 ###########
     GIT
 ###########
+
+
+
+git clone https://github.com/netkidd/py-ne
+
+
+
+.git
+
+Keeps track of all the objects in the system. Commits are stored in the objects directory
+
+
+git branch
+
+it shows the branch we have and we are working on
+
+
+# To add a file to git repository
+git add test_file.txt
+
+# Create a commit with a message
+git commit -m "Adding test file"
+
+cd .git/objects
+
+find . -type f
+
+
+# Git makes a copy of the file using a compression. Each commit is identified by a hash
+
+
+# To see all the activities
+git log
+git status
+
+# If we make any change the procedure is always the same
+git add test_file.txt
+
+git commit -m "Adding a new line to test file"
+
+
+# We can commit single files or entire directories (all the files inside will be committed)
+
+# Each new file is store in .git directory. Any time is possible to retrieve any old version
+
+The directory we are working on changes. It points to the last commit
+
+
+# To push the changes to github (from local master branch to remote master branch)
+git push origin master
+
+# To show the origin alias
+git remote -v
+
+
+# To change user and email (git config file)
+git config --global --edit
+
+# If previous commits were done with wrong identity
+git commit --amend --reset-author
+
+
+# To pull changes from github
+git pull origin master
+
+
+# To create a new branch
+git branch experiment_1
+
+
+git branch
+
+
+# To work in a different branch
+
+git checkout experiment_1
+
+
+# We can do commits and push the branch as with the master
+
+
+# If at some point we want to merge the experiment_1 branch into the master branch
+
+1) move to master branch
+git checkout master
+
+2) Merge
+git merge experiment_1
+
+
+# It's possible to fork somebody else repository in github. This way we get all their code copied in our github repository and we can make changes
