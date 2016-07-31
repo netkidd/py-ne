@@ -3,84 +3,87 @@
 ###########
 
 
-
+# To clone a repository fron github to the local machine
 git clone https://github.com/netkidd/py-ne
 
 
 
-.git
+# Git automatically creates an hidden directory .git
+# It keeps track of all the objects in the system. Commits are stored in the objects subdirectory
 
-Keeps track of all the objects in the system. Commits are stored in the objects directory
 
+# In Git there is the concept of branch. We have a master branch that identifies the main project. At any time if we want to make some experimental changes we can create a new branch.
+# All the changes done on the new branch project will not be seen in the main project. If we are satisfied with the changes they can be merged with the master project
 
+# To show the branches we have and on which we are currently working on
 git branch
 
-it shows the branch we have and we are working on
 
+# Git allows to have a kind of backup and restore system
+# Every time we make a new commit Git makes a copy of the file storing a compressed version of it. Each commit is identified by a hash
 
 # To add a file to git repository
 git add test_file.txt
 
-# Create a commit with a message
+# Create a commit with a message (comment)
 git commit -m "Adding test file"
 
+
+# We can check what Git created in the .git/objects directory
 cd .git/objects
 
 find . -type f
 
 
-# Git makes a copy of the file using a compression. Each commit is identified by a hash
 
-
-# To see all the activities
-git log
+# To check if there was any new change in the project that was not yet committed
 git status
 
-# If we make any change the procedure is always the same
-git add test_file.txt
+# To see all the activities done since the beginning of the project
+git log
 
+
+# If we make any additional change the procedure is always the same. Add and commit
+git add test_file.txt
 git commit -m "Adding a new line to test file"
 
 
 # We can commit single files or entire directories (all the files inside will be committed)
-
 # Each new file is store in .git directory. Any time is possible to retrieve any old version
+# The directory we are working on changes. It points to the last commit by default. If we change branch it points to the last commit on that branch
 
-The directory we are working on changes. It points to the last commit
 
-
-# To push the changes to github (from local master branch to remote master branch)
+# To push the changes to github (from local master branch to remote master branch). In this case only the branch source is specified (master), the branch destination by default is the same as the source
 git push origin master
 
-# To show the origin alias
+# In the previous command "origin" is actually an alias for the remote system (github). To show the origin alias
 git remote -v
 
 
 # To change user and email (git config file)
 git config --global --edit
 
-# If previous commits were done with wrong identity
+# If previous commits were done with wrong identity it's better to fix it for consistency. If there was no identity change the command is not necessary
 git commit --amend --reset-author
 
 
-# To pull changes from github
+# To pull changes from github (synchronize from github to local machine)
 git pull origin master
+
 
 
 # To create a new branch
 git branch experiment_1
 
-
+# To verify the new branch has been created
 git branch
 
 
 # To work in a different branch
-
 git checkout experiment_1
 
 
-# We can do commits and push the branch as with the master
-
+# We can do commits and push the branch as we did with the master
 
 # If at some point we want to merge the experiment_1 branch into the master branch
 
