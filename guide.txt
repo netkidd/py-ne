@@ -2,9 +2,40 @@
     GIT
 ###########
 
+# There are two ways to work with GIT. Or we create a local repository in our local machine or we create a remote repository in github and then we clone it.
+
+
+### Option 1 ###
+
+# Set your Git name and Git email address. These are included in commits.
+# You only have to do this once per system
+git config --global user.name "Jimmy Joe"
+git config --global user.email "jj@email.com"
+
+# Make your repository directory
+mkdir py-ne
+cd py-ne
+
+# Initialize the repository
+git init
+
+# Add a file
+touch README.md
+git add README.md
+git commit -m 'Initial commit'
+
+# Add a git remote (pointing to GitHub)
+# Only necessary if you are going to push changes up to GitHub
+# You will still need to create the remote 'working_dir' repository in GitHub
+git remote add origin https://github.com/netkidd/py-ne.git
+
+
+
+### Option 2 ###
 
 # To clone a repository fron github to the local machine
 git clone https://github.com/netkidd/py-ne
+
 
 
 
@@ -70,6 +101,9 @@ git commit --amend --reset-author
 # To pull changes from github (synchronize from github to local machine)
 git pull origin master
 
+# A Git pull always does a merge. A 'git pull' is a combination of two separate actions a 'git fetch' and a 'git merge'.
+# Some situations prompt you to comment on the merge or require you to manually resolve the merge; other merges can just be handled automatically by Git.
+
 
 
 # To create a new branch
@@ -95,3 +129,181 @@ git merge experiment_1
 
 
 # It's possible to fork somebody else repository in github. This way we get all their code copied in our github repository and we can make changes
+
+
+
+
+############
+    YAML
+############
+
+
+# We can use yaml on python scripts by importing yaml
+import yaml
+
+
+# YAML  is extensively used in Ansible
+
+
+# We can use a test list to see the conversion between python notation and YAML
+test_list = [[0,1,2,3], 'whatever', 'hello', {'ip_addr':'10.10.10.10', 'attribs': [0,1,2,3,4]}]
+
+
+# To convert the test_list into YAML format we can use
+yaml.dump(test_list, default_flow_style=True)
+
+
+# YAML has also a more human readable format
+print(yaml.dump(test_list, default_flow_style=False))
+
+
+# We can also save it into a file
+with open("yaml_file_example.yml", "w") as f:
+  f.write(yaml.dump(test_list, default_flow_style=False))
+
+
+# By default python does not add the first 3 hyphens but each YAML file should have them
+
+
+# Here is an example
+
+---
+
+- - 0
+  - 1
+  - 2
+  - 3
+- whatever
+- hello
+- attribs:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  ip_addr: 10.10.10.10
+  version: 15
+
+
+# Each hyphen represent a list item. Strings are not quoted. Dictionaries are like in python, Key-Value pairs
+
+
+
+# To load a YAML file in python
+with open("yaml_file_example.yml") as f:
+  new_list = yaml.load(f)
+
+
+
+
+############
+    JSON
+############
+
+
+# Import json library
+import json
+
+
+# Sample list
+test_list = [[0,1,2,3], 'whatever', 'hello', {'ip_addr':'10.10.10.10', 'attribs': [0,1,2,3,4]}]
+
+
+# To convert the list in Json notation (dumps stands for dump string)
+json.dumps(test_list)
+
+
+# The result is almost the same as the notation in python. Here below is a comparison
+
+>>> test_list
+[[0, 1, 2, 3], 'whatever', 'hello', {'ip_addr': '10.10.10.10', 'attribs': [0, 1, 2, 3, 4]}]
+>>>
+>>>
+>>> json.dumps(test_list)
+'[[0, 1, 2, 3], "whatever", "hello", {"ip_addr": "10.10.10.10", "attribs": [0, 1, 2, 3, 4]}]'
+
+
+# If we want to write it in a file (we use dump and not dumps)
+with open("json_file_example.json", "w") as f:
+  json.dump(test_list, f)
+
+
+
+# To read from a Json file
+with open("json_file_example.json") as f:
+  new_list = json.load(f)
+
+
+
+
+#########################
+    CISCOCONFPARSE
+#########################
+
+# The library helps to deal with the hierarchical nature of cisco config
+# Install the library
+sudo pip install ciscoconfparse
+
+
+# Import a useful class
+from ciscoconfparse import CiscoConfParse
+
+
+# To load an existing config file (from the current directory)
+cisco_cfg = CiscoConfParse("cisco_show_run_example")
+
+
+# Let's say we want to find all the lines that begin with "interface" (the result will be a list even if there will be a single element found)
+interfaces = cisco_cfg.find_objects(r"^interface")
+
+
+# We can go through the list and print each element
+for i in interfaces:
+  print(i.text)
+
+
+# We can pull out each element in go deeper
+fa4 = interfaces[4]
+
+fa4.children
+
+for child in fa4.children:
+  print(child.text)
+
+
+# In cisco config there can be multiple levels of indentation
+# By using .childred it returns only the lines that are one level down
+# Use .children again to go deeper
+
+# If you want all the children, no matter the indentation use .all_children
+fa4.all_children
+
+
+# We can run some tests over each object
+fa4.is_child
+
+fa4.is_parent
+
+
+# If you have a child you can find the parent or all the parents (multiple levels up)
+child.parent
+
+child.all_parents
+
+
+# We can also make more complicated queries
+# For example let's pick all interfaces that have "no ip address as child"
+no_ip_int = cisco_cfg.find_objects_w_child(parentspec=r"^interface", childspec=r"no ip address")
+
+for int in no_ip_int:
+  print(int.text)
+
+
+# The same way we can find all the parents that don't have a specified child (the only thing that changes in the command is "wo")
+int_with_ip = cisco_cfg.find_objects_wo_child(parentspec=r"^interface", childspec=r"no ip address")
+
+for int in int_with_ip:
+  print(int)
+
+# The library works with everything that has an indented structure, not only for a show run.
+# For example we can use it to investigate some other show commands (e.g. sh interfaces)
