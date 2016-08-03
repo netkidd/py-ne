@@ -1,0 +1,16 @@
+---
+
+- - 0
+  - 1
+  - 2
+  - 3
+- whatever
+- hello
+- attribs:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  ip_addr: 10.10.10.10
+  version: 15
