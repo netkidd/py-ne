@@ -307,3 +307,133 @@ for int in int_with_ip:
 
 # The library works with everything that has an indented structure, not only for a show run.
 # For example we can use it to investigate some other show commands (e.g. sh interfaces)
+
+
+
+#########################
+    TELNETLIB
+#########################
+
+# Here is a quick example of how to establish a telnet connection via a Simple Python script
+# In this case we're not doing anything, just opening and closing the connection.
+
+***********
+#/usr/bin/env python
+import telnetlib
+
+TELNET_PORT = 23
+TELNET_TIMEOUT = 6
+
+def main():
+    ip_addr = '50.76.53.27'
+    username = 'pyclass'
+    password = '88newclass'
+
+    remote_conn = telnetlib.Telnet(ip_addr, TELNET_PORT, TELNET_TIMEOUT)
+    remote_conn.close()
+
+if __name__ == ""__main__":
+    main()
+
+************
+
+
+# If we want to read from the telnet connection we can use some read method
+# In this example we read until "sername" is found or until the timeout has expired (6)
+output = remote_conn.read_until("sername", TELNET_TIMEOUT)
+
+
+# read_very_eager reads all the data that is available in a non blocking way
+# Before using that it's a good idea to introduce some pause to allow the processing before reading the output
+# For example 1 sec is enough
+import time
+time.sleep(1)
+output = remote_conn.read_very_eager()
+
+
+# If we want to send commands or any data on the channel we can use the write method
+# Remember always to add '\n', it's like pressing Enter after sending a command
+remote_conn.write(username + '\n')
+
+# Before lunching show commands it's a good idea to disable paging in order to
+# display the entire output
+remote_conn.write("terminal length 0" + '\n')
+remote_conn.write("show version" + '\n')
+
+
+# A well designed script is modular and avoids repetitions
+# We can use functions and classes
+
+# Take as parameters the telnet connection and the command to send
+# Execute the command and return the output
+def send_command(remote_conn, cmd):
+    cmd = cmd.strip()
+    remote_conn.write(cmd + '\n')
+    time.sleep(1)
+    output = remote_conn.read_very_eager()
+    return output
+
+
+# Take as parameters username, password, connection timeout
+# Login and returns the output until the login process
+def login(remote_conn, username, password, TELNET_TIMEOUT):
+    output = remote_conn.read_until("sername:", TELNET_TIMEOUT)
+    remote_conn.write(username + '\n')
+    output += remote_conn.read_until("assword:", TELNET_TIMEOUT)
+    remote_conn.write(password + '\n')
+    return output
+
+# To improve above login function it's a good idea to try 2-3 times if the login fails
+
+
+# In general when trying to connect to a device something can go wrong
+# For example the connection can timeout and if we don't handle the exception a traceback error is displayed
+# So we can wrap the connection inside a try - except block
+# When there is a timeout the exception raised is "socket.timeout" . We can see that by running the script and checking the traceback
+# sys.exit returns a non zero exit status (to indicate an error) and a nice message to the user
+
+import socket
+import sys
+
+def telnet_connection(ip_addr, TELNET_PORT, TELNET_TIMEOUT):
+    try:
+        remote_conn = telnetlib.Telnet(ip_addr, TELNET_PORT, TELNET_TIMEOUT)
+        return remote_conn
+    except socket.timeout:
+        sys.exit("Connection timed-out")
+
+# If you're trying to connect to 100 devices and one fails you don't want your script to exit completely but you just want to pass to the next loop iteration
+# Be careful on how you handle the exceptions
+
+
+# When you notice that several functions need the same parameters (like remote_conn or timeout in this case)
+# it's a good indicator that you should write a class
+
+
+
+
+####################
+ SNMP INTRO
+####################
+
+# SNMP is really good if you're trying to gather info from a device.
+# It's not so good to change the device config, we have better ways to do it
+
+# There are 3 version, only v3 has ecryption
+
+
+# OID = Object identifier. It's a string of numbers separated by a period
+# OID tree is hierarchically organized
+# Every piece of data in a device is identified by an OID
+# We can gather data from a device by specifying the OID we're interested in
+# If the value is scalar (e.g. interface errors, cpu usage, etc. - it's a single value) we have to append .0 to the OID
+# If it's tabular data you have to append a number for each row of the table (e.g. output rate for all interfaces)
+
+
+# MIB = Management Information base_list
+# It provides a definition of the data, it assigns variables to OIDs
+
+
+# Libraries available pysnmp (pure python library), netsmnp (C library)
+
+# We can use netsnmp utilities to quickly check snmp gets and snmp walk from the linux command lines
