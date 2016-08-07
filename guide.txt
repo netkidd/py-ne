@@ -437,3 +437,129 @@ def telnet_connection(ip_addr, TELNET_PORT, TELNET_TIMEOUT):
 # Libraries available pysnmp (pure python library), netsmnp (C library)
 
 # We can use netsnmp utilities to quickly check snmp gets and snmp walk from the linux command lines
+
+
+
+
+##############################
+ INSTALLING PYTHON LIBRARIES
+##############################
+
+
+# Classical method
+
+1) Download the zipped archive
+wget https://pypi.python.org/packages/source/p/pysnmp/pysnmp-4.2.5.tar.gz
+
+2) Unzip the archive. The output will be a tarball
+gunzip pysnmp-4.2.5.tar.gz
+
+3) Extract the data from the archive (tarball). The p flag is used to preserve the permissions (to check)
+tar -xpf pysnmp-4.2.5.tar
+
+4) Move into the newly uncompressed directory and run the setup to install the library
+cd pysnmp-4.2.5
+python setup.py install
+
+
+
+# New method with PIP. It's the preferred method to install python libraries because
+# it also handles very well the library dependencies
+pip install pysnmp==4.2.5
+
+# If you don't specify the version, the last one available will be used by default
+
+
+
+
+##################
+ SNMP Example
+##################
+
+
+# To find an OID to query we can use Cisco OID browser
+http://snmp.cloudapps.cisco.com/Support/SNMP/do/BrowseOID.do
+
+
+# The MIB-2 is a standard MIB that all snmp devices support
+# It starts at OID: 1.3.6.1.2.1  (iso.org.dod.internet.mgmt.mib-2)
+
+
+
+# We can use the snmp tools from Linux command line for testing
+# For example let's pick the system description (like show version)
+# The system description is OID:1.3.6.1.2.1.1.1
+# Since it's a scalar value we have to append 0 (for tabular data we would specify a number equal to the row  we want to query)
+snmpget -v 2c -c galileo 10.2.52.32 1.3.6.1.2.1.1.1.0
+
+
+# We can do an SNMP walk to go through the OID tree to find all the objects below
+# the specified point in the hierarchy
+# For example let's query everything that is below the system level (OID: 1.3.6.1.2.1.1)
+snmpwalk -Os -c galileo -v 2c 10.2.52.32 1.3.6.1.2.1.1
+
+
+
+# We can do the same with Python. We use two helper functions to simplify the procedure
+
+# Copy the snmp_helper library in the local directory, then import the functions
+from snmp_helper import snmp_get_oid,snmo_extract
+
+COMUNITY_STRING = 'galileo'
+SNMP_PORT = 161
+IP = '10.2.52.32'
+
+# A Tuple to identify the target
+a_device = (IP, COMUNITY_STRING, SNMP_PORT)
+
+# Look for system description
+OID = '1.3.6.1.2.1.1.1.0'
+
+# Query the device. The results is in hexadecimal
+snmp_data = snmp_get_oid(a_device, oid=OID)
+
+# Transform the data in human readable form
+output = snmp_extract(snmp_data)
+
+print output
+
+
+
+#####################
+ PYTHON LIBRARY PATH
+#####################
+
+
+# To see where python looks for libraries we can inspect sys.path
+import sys
+from pprint import pprint
+pprint(sys.path)
+
+# Result:
+['',
+ '/usr/lib64/python27.zip',
+ '/usr/lib64/python2.7',
+ '/usr/lib64/python2.7/plat-linux2',
+ '/usr/lib64/python2.7/lib-tk',
+ '/usr/lib64/python2.7/lib-old',
+ '/usr/lib64/python2.7/lib-dynload',
+ '/usr/lib64/python2.7/site-packages',
+ '/usr/lib/python2.7/site-packages']
+
+
+# By default it checks in the current directory and some other places
+
+
+# If we want to add a library and we want to be accessible from anywhere in the system (not only from current directory)
+# there are two main ways
+
+# Option 1) Add the path to new library in the PYTHONPATH environment variable (Not set by default). Use "env | grep PYTHON" to verify
+export PYTHONPATH='/home/me/My_library_directory'
+
+# Option 2) Move the library in /usr/lib/python2.7/site-packages (that is already in the python path)
+mv file.py /usr/lib/python2.7/site-packages
+
+
+# We should always keep in mind that is a best practice to write reusable code
+# meaning some pieces of code might be useful in other scripts and we don't need to re-write them
+# We can basically create our own libraries. Each script we create can as used as a library for another script
