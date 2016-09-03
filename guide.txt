@@ -563,3 +563,210 @@ mv file.py /usr/lib/python2.7/site-packages
 # We should always keep in mind that is a best practice to write reusable code
 # meaning some pieces of code might be useful in other scripts and we don't need to re-write them
 # We can basically create our own libraries. Each script we create can as used as a library for another script
+
+
+
+
+#####################
+ SNMP V3
+#####################
+
+
+# It has encryption and authentication
+
+# Basic config example:
+
+# Define a view. It specifies what can be seen (from this section of the hirerchy downwards)
+snmp-server view VIEWSTD iso included
+
+# Define a group (READONLY). Bind it to the view and  to an access list that specifies who can use it.
+snmp-server group READONLY v3 priv read VIEWSTD access 98
+
+# Define a user. Bind  it to the group and specify authentication and encryption keys (In this example both keys are equal but they don't have to)
+snmp-server user READONLY v3 auth sha galileo1 pric aes 128 galileo1
+
+
+
+# Also for SNMPv3 we can use some helper functions (inside snmp_helper library).
+# snmp_get_oid_v3 takes as parameters two values:
+# a_device = a tuple of IP address and snmp port
+# a_user = a tuple of user name authentication key and encryption key
+
+# 4 other parameters are optionals and they default to:
+# oid='.1.3.6.1.2.1.1.1.0'
+# auth_proto='sha'
+# encrypt_proto='aes128'
+# display_errors=True
+
+# If the configuration of the deivce does not match the default auth and encryption we have to change the parameters
+
+# TIP: if we are coping code from a text file to python console and it's indented we can use 'if True'
+
+if True:
+  IP = '50.242.2.23'
+  a_user = 'pysnmp'
+  auth_key = 'galileo1'
+  encrypt_key = 'galileo1'
+  snmp_user = (a_user, auth_key, encrypt_key)
+  pynet_rtr1 = (IP, 61)
+  pynet_rtr2 = (IP2, 61)
+
+snmp_data = snmp_helper.snmp_get_oid_v3(pynet_rtr1, snmp_user, oid='1.3.6.1.2.1.1.5.0')
+
+output = snmp_helper.snmp_extract(snmp_data)
+
+
+
+
+##########################################
+ SNMP V3 Example - Gather interface data
+##########################################
+
+
+# First we can do an snmp walk on MIB2 Interfaces OID
+
+snmpwalk -Os -c galileo -v 1 20.2.16.36 1.3.6.1.2.1.2
+
+# We'll get some scalar data and some tabular data
+# By checking the ifDescr OID we can see to which interface correspond each index
+# For example ifDescr.1 is FastEthernet0. This means that every other tabular data with index 1 is related to Fa0. (E.g. ifMTU.1 is related to Fa0)
+
+
+# Choose the OIDs to query
+snmp_oids = (
+    ('sysName', '1.3.6.1.2.1.1.5.0', None),
+    ('sysUptime', '1.3.6.1.2.1.1.3.0', None),
+    ('ifDescr_fa4', '1.3.6.1.2.1.2.2.1.2.5', None),
+    ('ifInOctects_fa4', '1.3.6.1.2.1.2.2.1.10.5', True),
+    ('ifInUcastPkts_fa4', '1.3.6.1.2.1.2.2.1.11.5', True),
+    ('ifOutOctects_fa4', '1.3.6.1.2.1.2.2.1.16.5', True),
+    ('ifOutUcastPkts_fa4', '1.3.6.1.2.1.2.2.1.17.5', True),
+)
+
+# The last tuple field just indicates of the OID is counting something (e.g. packet count), it will be useful later
+
+# We can loop through them assigning a variable to each tuple element. We print the description and the extracted value
+for descr,an_oid,is_count in snmp_oids:
+    snmp_data = snmp_helper.snmp_get_oid_v3(pynet_rtr1, snmp_user, oid=an_oid )
+    output = snmp_helper.snmp_extract(snmp_data)
+    print "%s %s " % (descr, output)
+
+
+# If we run it several times we'll see an increase in the packet count
+
+
+
+#############################
+ Graphing SNMP data - PyGal
+#############################
+
+
+# If we run the above script for some time at regular intervals (e.g. for one hour every 5 min)
+# we get a set of data that can be represented with a graph and displayed using the browser
+
+# Note: The packet count is the total since the interface went up, so each 5 min we should subtract the previous total count to get the 5 min packet count.
+
+
+# PyGal is the library we'll use. It's an SVG graphing library
+pip install pygal
+
+
+# Let's use some random data just to test the library
+
+fa4_in_octects = [5234, 5131, 5169, 6491, 5462]
+fa4_out_octects = [5231, 5138, 6452, 4523, 5463]
+
+fa4_in_packets = [24, 23, 26, 43, 16, 18 ]
+fa4_out_packets = [25, 36, 31, 24, 19, 17]
+
+# Create a pygal line chart
+line_chart = pygal.Line()
+
+# Give a title to the chart
+line_chart.title = 'Input/Output Packets and Bytes'
+
+# Specify the values on the x axe. In this case the data was sampled every 5 min
+line_chart.x_labels = [5, 10, 15, 20, 25]
+
+# Add a line for each graph we want to draw. Each line will have a title and a list of values
+line_chart.add('InPackets', fa4_in_packets)
+line_chart.add('OutPackets', fa4_out_packets)
+line_chart.add('InBytes', fa4_in_octects)
+line_chart.add('OutBytes', fa4_out_octects)
+
+# Save the output in a file. We can open the file with a Browser and display the result
+line_chart.render_to_file('test.svg')
+
+
+
+############################
+ Sending emails
+############################
+
+# It can be useful to get an email notification reporting for example snmp traps or results from queries
+
+
+# We can build an email helper library to use in other scripts
+
+# We rely on
+import smtplib
+from email.mime.text import MIMEText
+
+def send_mail(recipient, subject, message, sender):
+    '''
+    Simple function
+
+
+    >>>> CODE <<<<
+    def send_mail(recipient, subject, message, sender):
+        '''
+        Simple function to help simplify sending SMTP email
+
+        Assumes a mailserver is available on localhost
+        '''
+
+        import smtplib
+        from email.mime.text import MIMEText
+
+        message = MIMEText(message)
+        message['Subject'] = subject
+        message['From'] = sender
+        message['To'] = recipient
+
+        # Create SMTP connection object to localhost
+        smtp_conn = smtplib.SMTP('localhost')
+
+        # Send the email
+        smtp_conn.sendmail(sender, recipient, message.as_string())
+
+        # Close SMTP connection
+
+        smtp_conn.quit()
+
+        return True
+
+    >>>> END CODE <<<<
+
+
+    You then send an email using the above function as follows:
+
+    >>>> CODE <<<<
+    import email_helper
+
+    recipient = 'ktbyersx@gmail.com'
+    subject = 'Test message'
+    message = '''
+
+    This is a fictional test message.
+
+
+    Regards,
+
+    Kirk
+
+    '''
+
+    sender = 'ktbyers@twb-tech.com'
+    email_helper.send_mail(recipient, subject, message, sender)
+
+    >>>> END CODE <<<<
