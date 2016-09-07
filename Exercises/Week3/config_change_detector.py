@@ -9,13 +9,14 @@ If the running configuration has changed, then send an email notification to you
 
 '''
 import time
-import email_helper
+import smtplib
+from email.mime.text import MIMEText
 from snmp_helper import snmp_get_oid, snmp_extract
 
 
 # Email template to send an email to ourselves in case the configuration changes
-sender = 'user@email.com'
-recipient = 'user@email.com'
+sender = 'me@ciao.com'
+recipient = 'jakkk.ikkk@yahoo.it'
 subject = 'SNMP Notification - Configuration changed.'
 message = '''
 
@@ -26,16 +27,19 @@ The configuration of a monitored device has been changed. See below the details.
 '''
 
 
+
+
 # SNMP parameters
 
 COMUNITY_STRING = 'galileo'
 SNMP_PORT = 161
-IP1 = '10.2.52.32'
-IP2 = '10.2.52.33'
+IP1 = '184.105.247.70'
+IP2 = '184.105.247.71'
 
 # A Tuple to identify the target
 router1 = (IP1, COMUNITY_STRING, SNMP_PORT)
 router2 = (IP2, COMUNITY_STRING, SNMP_PORT)
+devices = [router1, router2]
 
 
 #System uptime
@@ -54,8 +58,11 @@ oids = (sysUptime_oid, ccmHistoryRunningLastChanged_oid, ccmHistoryRunningLastSa
 
 
 # Initialize the system uptime variable. All the timestamps in the first min will be compared to this value
-sysUptime_data = snmp_get_oid(router1, oid=sysUptime_oid)
-sysUptime = snmp_extract(sysUptime_data)
+sysUptimes = []
+for device in devices:
+    sysUptime_data = snmp_get_oid(device, oid=sysUptime_oid)
+    sysUptime = snmp_extract(sysUptime_data)
+    sysUptimes.append(sysUptime)
 
 
 
@@ -72,21 +79,43 @@ def is_config_changed (sysUptime, ccmHistoryRunningLastChanged, ccmHistoryRunnin
 
 while True:
     if time.time() % 60 == 0:
-        ccmHistoryRunningLastChanged_data = snmp_get_oid(router1, oid=ccmHistoryRunningLastChanged_oid)
-        ccmHistoryRunningLastSaved_data = snmp_get_oid(router1, oid=ccmHistoryRunningLastSaved_oid)
-        ccmHistoryStartupLastChanged_data = snmp_get_oid(router1, oid=ccmHistoryStartupLastChanged_oid)
+        for device, sysUptime in zip(devices, sysUptimes):
+            ccmHistoryRunningLastChanged_data = snmp_get_oid(device, oid=ccmHistoryRunningLastChanged_oid)
+            ccmHistoryRunningLastSaved_data = snmp_get_oid(device, oid=ccmHistoryRunningLastSaved_oid)
+            ccmHistoryStartupLastChanged_data = snmp_get_oid(device, oid=ccmHistoryStartupLastChanged_oid)
 
-        ccmHistoryRunningLastChanged_output = snmp_extract(ccmHistoryRunningLastChanged_data)
-        ccmHistoryRunningLastSaved_output = snmp_extract(ccmHistoryRunningLastSaved_data)
-        ccmHistoryStartupLastChanged_output = snmp_extract(ccmHistoryStartupLastChanged_data)
+            ccmHistoryRunningLastChanged_output = snmp_extract(ccmHistoryRunningLastChanged_data)
+            ccmHistoryRunningLastSaved_output = snmp_extract(ccmHistoryRunningLastSaved_data)
+            ccmHistoryStartupLastChanged_output = snmp_extract(ccmHistoryStartupLastChanged_data)
 
-        if is_config_changed(sysUptime, ccmHistoryRunningLastChanged_output, ccmHistoryRunningLastSaved_output, ccmHistoryStartupLastChanged_output):
-            message = message + "Device: %s\nCurrent time: %s\nChange done %s seconds ago." % ('Router1', str(time.localtime()[3]) +':'+ str(time.localtime()[4]) +':'+ str(time.localtime()[5], ccmHistoryRunningLastChanged_output/6000)
-            email_helper.send_mail(recipient, subject, message, sender)
-        else:
-            # For troubleshooting
-            print 'No changes detected'
+            if is_config_changed(sysUptime, ccmHistoryRunningLastChanged_output, ccmHistoryRunningLastSaved_output, ccmHistoryStartupLastChanged_output):
+                message = message + "\n\nAffected Device: %s\nChanges done less than one minute ago." % (device[0])
+                message = MIMEText(message)
+                message['Subject'] = subject
+                message['From'] = sender
+                message['To'] = recipient
+            
+
+                # Create SMTP connection object towards the email server (localhost in this case)
+                smtp_conn = smtplib.SMTP('localhost')
+
+                # Send the email
+                smtp_conn.sendmail(sender, recipient, message.as_string())
+
+                # Close SMTP connection
+                smtp_conn.quit()
+
+                print 'Changes'
+
+            else:
+                # For troubleshooting
+                print 'No changes detected'
 
         # Reset the system uptime to have a new value to compare
-        sysUptime_data = snmp_get_oid(router1, oid=sysUptime_oid)
-        sysUptime = snmp_extract(sysUptime_data)
+        sysUptimes = []
+        for device in devices:
+            sysUptime_data = snmp_get_oid(device, oid=sysUptime_oid)
+            sysUptime = snmp_extract(sysUptime_data)
+            sysUptimes.append(sysUptime)
+
+
