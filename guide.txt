@@ -499,6 +499,10 @@ snmpget -v 2c -c galileo 10.2.52.32 1.3.6.1.2.1.1.1.0
 snmpwalk -Os -c galileo -v 2c 10.2.52.32 1.3.6.1.2.1.1
 
 
+# The flag
+# -Os    Display the MIB object name (plus any instance or other subidentifiers):
+# sysUpTime.0 = Timeticks: (14096763) 1 day, 15:09:27.63
+
 
 # We can do the same with Python. We use two helper functions to simplify the procedure
 
@@ -583,8 +587,12 @@ snmp-server view VIEWSTD iso included
 snmp-server group READONLY v3 priv read VIEWSTD access 98
 
 # Define a user. Bind  it to the group and specify authentication and encryption keys (In this example both keys are equal but they don't have to)
-snmp-server user READONLY v3 auth sha galileo1 pric aes 128 galileo1
+snmp-server user test READONLY v3 auth sha galileo1 priv aes 128 galileo1
 
+
+# Example of snmpget/walk using SNMP v3 (test is the username, galileo1 is the pwd for encryption and authentication)
+snmpget -v3  -l authPriv -u test -a SHA -A galileo1  -x AES -X galileo1 184.105.247.70 1.3.6.1.2.1.1.1.0
+snmpwalk -v3  -l authPriv -u test -a SHA -A galileo1  -x AES -X galileo1 184.105.247.70 1.3.6.1.2.1.1
 
 
 # Also for SNMPv3 we can use some helper functions (inside snmp_helper library).
