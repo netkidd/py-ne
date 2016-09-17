@@ -716,65 +716,54 @@ line_chart.render_to_file('test.svg')
 
 # We can build an email helper library to use in other scripts
 
-# We rely on
+# We rely on two libraries
+
 import smtplib
 from email.mime.text import MIMEText
 
+
+
 def send_mail(recipient, subject, message, sender):
     '''
-    Simple function
+    Simple function to help simplify sending SMTP email
 
-
-    >>>> CODE <<<<
-    def send_mail(recipient, subject, message, sender):
-        '''
-        Simple function to help simplify sending SMTP email
-
-        Assumes a mailserver is available on localhost
-        '''
-
-        import smtplib
-        from email.mime.text import MIMEText
-
-        message = MIMEText(message)
-        message['Subject'] = subject
-        message['From'] = sender
-        message['To'] = recipient
-
-        # Create SMTP connection object to localhost
-        smtp_conn = smtplib.SMTP('localhost')
-
-        # Send the email
-        smtp_conn.sendmail(sender, recipient, message.as_string())
-
-        # Close SMTP connection
-
-        smtp_conn.quit()
-
-        return True
-
-    >>>> END CODE <<<<
-
-
-    You then send an email using the above function as follows:
-
-    >>>> CODE <<<<
-    import email_helper
-
-    recipient = 'ktbyersx@gmail.com'
-    subject = 'Test message'
-    message = '''
-
-    This is a fictional test message.
-
-
-    Regards,
-
-    Kirk
-
+    Assumes a mailserver is available on localhost
     '''
 
-    sender = 'ktbyers@twb-tech.com'
-    email_helper.send_mail(recipient, subject, message, sender)
+    import smtplib
+    from email.mime.text import MIMEText
 
-    >>>> END CODE <<<<
+    message = MIMEText(message)
+    message['Subject'] = subject
+    message['From'] = sender
+    message['To'] = recipient
+
+    # Create SMTP connection object to localhost
+    smtp_conn = smtplib.SMTP('localhost')
+
+    # Send the email
+    smtp_conn.sendmail(sender, recipient, message.as_string())
+
+    # Close SMTP connection
+
+    smtp_conn.quit()
+
+    return True
+
+
+
+
+# You then send an email using the above function as follows:
+
+import email_helper
+
+recipient = 'whatever@gmail.com'
+subject = 'Test message'
+message = '''
+
+Test message
+
+'''
+
+sender = 'address@email.com'
+email_helper.send_mail(recipient, subject, message, sender)
