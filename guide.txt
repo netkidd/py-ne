@@ -954,42 +954,42 @@ ssh_conn.expect_exact('License')
 
 # It's an ssh library that simplifies the interaction with the devices
 
-from netmiko import ConnectionHandler
+from netmiko import ConnectHandler
 from getpass import getpass
-password = getpass()
 
+password = getpass()
+enable_secret = getpass()
 
 # The devices are defined as dictionaries
 pynet1 = {
     'device_type': 'cisco_ios',
-    'ip': '20.2.1.1'
-    'username' = 'pyclass'
-    'password' = password
+    'ip': '184.105.247.70',
+    'username': 'pyclass',
+    'password': password,
+    'secret': enable_secret
 }
 
 pynet2 = {
     'device_type': 'cisco_ios',
-    'ip': '20.2.1.2'
-    'username' = 'pyclass'
-    'password' = password
-    'secret': 'whatever'
-    'port': 8022
+    'ip': '184.105.247.71',
+    'username': 'pyclass',
+    'password': password,
+    'secret': enable_secret
 }
 
 juniper_srx = {
     'device_type': 'juniper',
-    'ip': '20.2.1.3'
-    'username' = 'pyclass'
-    'password' = password
-    'secret': ''
-    'port': 9022
+    'ip': '184.105.247.76',
+    'username': 'pyclass',
+    'password': password,
+    'secret': enable_secret
 }
 
 
 # Using the connect handler we can establish a connection towards each device
-net_connect1 = ConnectionHandler(**pynet1)
-net_connect2 = ConnectionHandler(**pynet2)
-net_connect3 = ConnectionHandler(**juniper_srx)
+net_connect1 = ConnectHandler(**pynet1)
+net_connect2 = ConnectHandler(**pynet2)
+net_connect3 = ConnectHandler(**juniper_srx)
 
 # we're passing the dictionary to the function but adding **
 # it means we're actually passing only the key values as arguments
