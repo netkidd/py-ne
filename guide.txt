@@ -767,3 +767,270 @@ Test message
 
 sender = 'address@email.com'
 email_helper.send_mail(recipient, subject, message, sender)
+
+
+
+
+
+###############
+ Paramiko
+###############
+
+# It's a python ssh library
+
+
+import paramiko
+from getpass import getpass
+
+ip_addr = '34.2.2.3'
+username = 'pyclass'
+password = getpass()
+port = 8022
+
+
+# Using paramiko we can instantiate an SSH client object
+remote_conn_pre = paramiko.SSHClient()
+
+# We should tell paramiko how to deal with ssh keys. In a test environment we can blindly accept every key
+remote_conn_pre.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+# The SSH client object we created is able to start a connection towards the target. The port is optional, 22 is by default
+remote_conn_pre.connect(ip_addr, username=username, password=password, look_for_keys=False, allow_agent=False, port=port)
+
+# Now we can invoke the shell (read below for an more detailed explanation)
+remote_conn = remote_conn_pre.invoke_shell()
+
+# Now we can read and send data from the channel
+output = remote_conn.recv(5000)    # receive all data available up to 5000 bytes
+print output
+
+remote_conn.send("show ip int brief\n")    # This commands sends the data and returns the number of bytes sent. 18 in this case
+output = remote_conn.recv(5000)
+print output
+
+
+# On a linux box to see if there is a new ssh connection we can Use
+netstat -an | grep :22
+
+
+
+
+##### Better handling of ssh keys
+# Blindly accept every key is a security risk. There are better ways
+
+# One way is to tell Paramiko to load the system keys (known_hosts file). This way, if the key is trusted by the system it will be accepted by Paramiko
+remote_conn_pre.load_system_host_keys()
+remote_conn_pre.load_system_host_keys(/home/me/.shh/known_hosts_private)  # Optionally you can specify the file to use if different than known_hosts
+
+# The drawback is that you need to have all keys of the devices you want to connect in the known_hosts file (or in the file you specify)
+
+
+
+##### Different ways to send commands
+
+# You can use exec_command method.
+stdin, stdout, stderr = remote_conn_pre.exec_command('show ip int brief')
+
+print stdout
+
+# Paramiko creates channels inside the ssh connection. You can send data through the channel
+# The first time you use exec_command it works with no problems but after the data is sent it closes the channel
+# On a linux box you can just resend the command to open a new channel
+# On a Cisco router after exec_command is executed not it closes the channel but it also closes the ssh connection!!
+
+# By using invoke_shell we can have an interactive session with the router and the ssh connection does not drop
+remote_conn = remote_conn_pre.invoke_shell()
+remote_conn.send("show ip int brief\n")
+
+
+
+#### Timeouts
+# If there is no data received from the channel, after a certain amount of time you can choose the SSH connection is closed
+remote_conn.settimeout(6.0)  # To set the timeout (6 sec in this case)
+remote_conn.gettimeout()     # To verify the timeout setting
+
+
+# To know if there is any data available to be read
+remote_conn.recv_ready()    # It returns True or False
+
+outp = remote_conn.recv(5000)   # Reads everything that was not yet received
+
+
+# The max you can read is 65535 bytes
+outp = remote_conn.recv(65535)
+
+
+# If you need to receive a lot of data, 65535 bytes it's not enough
+# A workaround is to use a loop that checks if there is still any data available to read. Add a sleep to allow the gathering of new data
+
+MAX_BUFFER = 65535
+
+
+while remote_conn.recv_ready():
+    output += remote_conn.recv(MAX_BUFFER)
+
+
+## When we connected we used:
+remote_conn_pre.connect(ip_addr, username=username, password=password, look_for_keys=False, allow_agent=False, port=port)
+
+# By default, Paramiko will try to use your SSH keys for authentication (for example, id_rsa or id_dsa).
+# In fact, if either of these keys exist, Paramiko will ignore the username/password and only try key-based authentication.
+# The 'look_for_keys=False' argument changes this behavior and tells Paramiko to ignore the SSH keys (i.e. to use the username and password instead).
+
+# Similarly, Paramiko will try to use an SSH forwarding agent, if present. The 'allow_agent=False' argument instructs Paramiko not to do this.
+
+
+
+
+###############
+ PExpexct
+###############
+
+
+import pexpect
+from getpass import getpass
+
+ip_addr = '23.2.1.2'
+username = 'pyclass'
+port = 8022
+password = getpass()
+
+
+# First we spawn a child process. We use '.format' but we could also use the %
+ssh_conn = pexpect.spawn('ssh -l {} {} -p {}'.format(username, ip_addr, port))
+
+# Set the timeout to wait until the pattern is detected
+ssh_conn.timeout = 3
+
+# Wait for a pattern and send the desired command
+ssh_conn.expect('ssword:')
+ssh_conn.sendline(password)     # The sendline command automatically sends a new line
+
+# Wait for a new pattern
+ssh_conn.expect('#')
+
+# The patterns are regular expressions but they are not greedy by default (this might cause a different behavior than usual)
+
+
+# Print everything we saw until the last pattern (excluded)
+print ssh_conn.before
+
+# Print everything we saw until the last pattern (included)
+print ssh_conn.after
+
+
+# For debugging, to see what's going on we can print the logs
+ssh_conn.logfile = sys.stdout
+
+
+# We could handle a timeout with a try except block
+try:
+    ssh_conn.sendline('show version')
+    ssh_conn.expect('zzzz')
+except pexpect.TIMEOUT:
+    print "Found timeout"
+
+
+# Example of some more complex patterns (looking for License UDI). We use re module
+pattern = re.compile(r'^Lic.*DI:.*$', re.MULTILINE)
+ssh_conn.sendline('show version')
+ssh_conn.expect(pattern)
+print ssh_conn.after
+
+# re.MULTILINE checks the document line by line instead of all at once
+
+
+# If you don't want to use a regular expression match but use a simple string
+ssh_conn.expect_exact('License')
+
+
+
+
+
+
+###############
+ NETMIKO
+###############
+
+# It's an ssh library that simplifies the interaction with the devices
+
+from netmiko import ConnectionHandler
+from getpass import getpass
+password = getpass()
+
+
+# The devices are defined as dictionaries
+pynet1 = {
+    'device_type': 'cisco_ios',
+    'ip': '20.2.1.1'
+    'username' = 'pyclass'
+    'password' = password
+}
+
+pynet2 = {
+    'device_type': 'cisco_ios',
+    'ip': '20.2.1.2'
+    'username' = 'pyclass'
+    'password' = password
+    'secret': 'whatever'
+    'port': 8022
+}
+
+juniper_srx = {
+    'device_type': 'juniper',
+    'ip': '20.2.1.3'
+    'username' = 'pyclass'
+    'password' = password
+    'secret': ''
+    'port': 9022
+}
+
+
+# Using the connect handler we can establish a connection towards each device
+net_connect1 = ConnectionHandler(**pynet1)
+net_connect2 = ConnectionHandler(**pynet2)
+net_connect3 = ConnectionHandler(**juniper_srx)
+
+# we're passing the dictionary to the function but adding **
+# it means we're actually passing only the key values as arguments
+# it would be the same as typing ('device_type': 'cisco_ios','ip': '20.2.1.1', etc.)
+
+# net_connect1/2/3 are Netmiko objects
+# we can check what it's capable of
+dir(net_connect1)
+
+
+# To visualize the prompt
+net_connect1.find_prompt()
+
+# To enter in config mode
+net_connect1.config_mode()
+
+# To check if you are in config mode
+net_connect1.check_config_mode()     # returns True or False
+
+# To send a command
+output = net_connect1.send_command("show ip int brief")   # It will automatically add a newline to make sure the command is sent. Also paging is automatically disabled
+
+print output     # the output will already strip off the echo of the command and the trailing prompt
+
+
+# If we want to send configuration commands we need first to construct a list of command (also for a single command)
+config_commands = ['logging buffer 64000']
+
+# Then we can send all the commands in the list
+output = net_connect1.send_config_set(config_commands)     # The send_config command goes in config mode automatically
+
+# If you want you can also send config commands from a file
+net_connect1.send_config_from_file(config_file='config_file.txt')
+
+## The changes are not automatically saved, you have to do it manually!!!
+
+
+
+# For Juniper devices the commands are the same
+# You additionally have the commit command to commit the changes (in Juniper the changes are not accepted until they are commited)
+net_connect3.commit()
+
+
+# To check the list of supported devices by Netmiko check the CLASS_MAPPER in the source code
